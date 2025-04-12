@@ -32,6 +32,7 @@ def receive_mt4_data():
     data = request.get_json()
     # Отладочная печать: выводим полученные данные в консоль
     print("Data received:", data)
+    return "OK"
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     row = [
