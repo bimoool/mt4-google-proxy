@@ -14,9 +14,7 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Получаем credentials из переменной окружения
-json_str = os.environ["GSPREAD_CREDENTIALS"]
-creds_dict = json.loads(json_str)
+creds_dict = json.loads(os.environ["GSPREAD_CREDENTIALS"])
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
@@ -26,6 +24,8 @@ sheet = client.open_by_key(spreadsheet_id).worksheet("Forex")
 @app.route('/send', methods=['POST'])
 def receive_mt4_data():
     data = request.get_json()
+    print("Data received:", data)
+
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     row = [
@@ -38,7 +38,7 @@ def receive_mt4_data():
     ]
 
     sheet.append_row(row)
-    return "OK", 200
+    return "OK"
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host="0.0.0.0", port=10000)
