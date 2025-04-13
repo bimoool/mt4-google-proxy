@@ -5,33 +5,32 @@ from flask import Flask, request, jsonify
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
 # Инициализация Google Sheets
+sheet = None
+init_error = None
 try:
     creds_json = os.getenv("GOOGLE_CREDENTIALS")
     if not creds_json:
-        raise Exception("GOOGLE_CREDENTIALS env var not set")
+        raise ValueError("GOOGLE_CREDENTIALS not set")
     
     creds_dict = json.loads(creds_json)
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     client = gspread.authorize(creds)
-
-    # Открытие таблицы по ID и имени листа
-    SPREADSHEET_ID = "12lJZgUKecjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc"
+    
+    SPREADSHEET_ID = "12IJZgUKeCjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc"
     SHEET_NAME = "Forex"
     sheet = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
+
+    logger.info("Google Sheet инициализирован")
 except Exception as e:
-    logger.error(f"Ошибка при инициализации Google Sheets: {e}")
-    sheet = None
+    init_error = str(e)
+    logger.error(f"Ошибка инициализации: {init_error}")
 
 @app.route("/", methods=["GET"])
 def index():
@@ -39,18 +38,18 @@ def index():
         "status": "running",
         "sheet_initialized": sheet is not None,
         "init_error": init_error
-    }), 200
+    })
 
 @app.route("/send", methods=["POST"])
 def receive_data():
-    logger.info("Запрос получен: %s", request.get_data(as_text=True))
-    try:
-        if sheet is None:
-            raise Exception("Google Sheet не инициализирован")
+    logger.info("mt4_proxy_server:Запрос получен: %s", request.get_data(as_text=True))
+    if sheet is None:
+        return jsonify({"error": "Google Sheet не инициализирован"}), 500
 
-        data = request.get_json()
+    try:
+        data = request.get_json(force=True)
         if not data:
-            return jsonify({"error": "Нет JSON-данных"}), 400
+            return jsonify({"error": "Неверный JSON"}), 400
 
         row = [
             str(data.get("account", "")),
@@ -58,16 +57,16 @@ def receive_data():
             str(data.get("equity", "")),
             str(data.get("profit", "")),
             str(data.get("drawdown", "")),
-            str(data.get("name", "")),
+            str(data.get("name", ""))
         ]
 
-        sheet.append_row(row)
-        logger.info("Данные успешно добавлены: %s", row)
+        sheet.append_row(row, value_input_option="USER_ENTERED")
+        logger.info("mt4_proxy_server:Данные успешно добавлены: %s", row)
         return jsonify({"status": "success"}), 200
 
     except Exception as e:
-        logger.error(f"Ошибка при обработке запроса: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error("mt4_proxy_server:Ошибка при обработке запроса: %s", str(e))
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
