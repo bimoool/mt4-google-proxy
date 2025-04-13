@@ -7,4 +7,4 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-CMD ["python", "mt4_proxy_server.py"]
+CMD ["gunicorn", "mt4_proxy_server:app", "--bind", "0.0.0.0:8080"]
