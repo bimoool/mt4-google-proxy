@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import gspread
 import os
 import json
-from google.oauth2.service_account import Credentials
+from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 
@@ -18,9 +18,8 @@ def receive_data():
             raise Exception("GSPREAD_CREDENTIALS env var not set")
 
         creds_dict = json.loads(creds_json)
-
-        scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-        credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(credentials)
 
         spreadsheet_id = "12IJZgUKeCjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc"
@@ -34,7 +33,6 @@ def receive_data():
             str(data.get("drawdown")),
             str(data.get("name")),
         ]
-
         sheet.append_row(row)
         return jsonify({"status": "success"}), 200
 
@@ -44,6 +42,3 @@ def receive_data():
 @app.route("/", methods=["GET"])
 def index():
     return "MT4 Proxy Server is running", 200
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8080)
