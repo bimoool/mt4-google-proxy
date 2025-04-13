@@ -11,10 +11,11 @@ logger = logging.getLogger("mt4_proxy_server")
 
 app = Flask(__name__)
 
-# === Google Sheets ===
+# Глобальные переменные
 sheet = None
 init_error = None
 
+# Инициализация Google Sheets
 try:
     creds_json = os.getenv("GOOGLE_CREDENTIALS")
     if not creds_json:
@@ -25,50 +26,58 @@ try:
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 
     client = gspread.authorize(creds)
-    sheet = client.open_by_key("12lJZgUKecjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc").worksheet("Forex")
-    logger.info("Google Sheet успешно инициализирован")
+
+    sheet_id = os.getenv("SPREADSHEET_ID")
+    if not sheet_id:
+        raise ValueError("SPREADSHEET_ID переменная окружения не установлена")
+
+    sheet = client.open_by_key(sheet_id).worksheet("Forex")
+    logger.info("✅ Google Sheet успешно инициализирован")
+
 except Exception as e:
     init_error = str(e)
-    logger.error("Ошибка при инициализации Google Sheets: %s", init_error)
+    logger.error("❌ Ошибка при инициализации Google Sheets: %s", init_error)
+
 
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify({
+    status = {
         "status": "running",
         "sheet_initialized": sheet is not None,
-        "init_error": init_error
-    })
+    }
+    if init_error:
+        status["init_error"] = init_error
+    return jsonify(status)
+
 
 @app.route("/send", methods=["POST"])
-def send():
-    logger.info("Запрос получен: %s", request.get_data(as_text=True))
-    if sheet is None:
+def receive_data():
+    global sheet
+    if not sheet:
         return jsonify({"error": "Google Sheet не инициализирован", "init_error": init_error}), 500
 
     try:
-        data = request.get_json(force=True, silent=False)
-        logger.info("Данные JSON: %s", data)
+        raw_data = request.get_data().decode("utf-8")
+        logger.info("📥 RAW BODY: %s", raw_data)
 
-        row = [
-            str(data.get("account", "")),
-            str(data.get("balance", "")),
-            str(data.get("equity", "")),
-            str(data.get("profit", "")),
-            str(data.get("drawdown", "")),
-            str(data.get("name", ""))
-        ]
+        data = json.loads(raw_data)
+        logger.info("✅ JSON получен: %s", data)
 
-        if not any(row):
-            return jsonify({"error": "Пустые данные"}), 400
+        required_fields = ["account", "balance", "equity", "profit", "drawdown", "name"]
+        values = []
+        for field in required_fields:
+            if field not in data:
+                raise ValueError(f"Missing field: {field}")
+            values.append(str(data[field]))
 
-        sheet.append_row(row, value_input_option="USER_ENTERED")
-        logger.info("Данные успешно добавлены: %s", row)
+        sheet.append_row(values)
+        logger.info("📤 Данные успешно добавлены: %s", values)
         return jsonify({"status": "success"}), 200
 
     except Exception as e:
-        logger.error("Ошибка при обработке запроса: %s", str(e))
+        logger.error("❌ Ошибка при обработке запроса: %s", str(e))
         return jsonify({"error": str(e)}), 400
 
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=8000)
