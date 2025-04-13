@@ -1,4 +1,4 @@
-Flask
-gspread
-google-auth
-gunicorn
+Flask==2.3.3
+gunicorn==23.0.0
+gspread==5.12.0
+oauth2client==4.1.3
