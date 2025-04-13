@@ -1,51 +1,44 @@
+import os
+import json
 from flask import Flask, request
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
-import os
-import json
 
 app = Flask(__name__)
 
-# Настройки Google API
-scope = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive"
-]
+@app.route('/send', methods=['POST'])
+def send():
+    try:
+        data = request.get_json(force=True)
 
-json_str = os.environ.get("GSPREAD_CREDENTIALS")
-if not json_str:
-    raise Exception("GSPREAD_CREDENTIALS env var not set")
+        # Авторизация через переменную окружения
+        creds_json = os.environ.get("GSPREAD_CREDENTIALS")
+        if not creds_json:
+            raise Exception("GSPREAD_CREDENTIALS env var not set")
 
-creds_dict = json.loads(json_str)
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-client = gspread.authorize(creds)
+        creds_dict = json.loads(creds_json)
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        client = gspread.authorize(creds)
 
-# Открываем таблицу и лист
-spreadsheet_id = "12lJZgUKecjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc"
-sheet = client.open_by_key(spreadsheet_id).worksheet("Forex")
+        # Открываем таблицу по ID и лист "Forex"
+        spreadsheet_id = "12lJZgUKeCjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc"
+        sheet = client.open_by_key(spreadsheet_id).worksheet("Forex")
 
-@app.route("/send", methods=["POST"])
-def receive():
-    data = request.get_json()
-    print("✅ Data received:", data)
+        # Записываем строку
+        sheet.append_row([
+            data.get("account"),
+            data.get("balance"),
+            data.get("equity"),
+            data.get("profit"),
+            data.get("drawdown"),
+            data.get("name"),
+        ])
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    row = [
-        data.get("account"),
-        data.get("balance"),
-        data.get("equity"),
-        data.get("profit"),
-        data.get("drawdown"),
-        data.get("name"),
-        timestamp
-    ]
-    sheet.append_row(row)
-    return "OK", 200
+        return "OK", 200
 
-# 🧙🏾‍♂️ Production запуск через waitress
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+    except Exception as e:
+        return str(e), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
