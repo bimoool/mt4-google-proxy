@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import gspread
 import os
 import json
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
 app = Flask(__name__)
 
@@ -19,8 +19,8 @@ def receive_data():
 
         creds_dict = json.loads(creds_json)
 
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(credentials)
 
         spreadsheet_id = "12IJZgUKeCjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc"
