@@ -25,7 +25,7 @@ try:
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 
     client = gspread.authorize(creds)
-    sheet = client.open_by_key("12IJZgUKeCjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc").worksheet("Forex")
+    sheet = client.open_by_key("12lJZgUKecjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc").worksheet("Forex")
     logger.info("Google Sheet успешно инициализирован")
 except Exception as e:
     init_error = str(e)
