@@ -26,7 +26,7 @@ try:
     client = gspread.authorize(creds)
 
     # Открытие таблицы по ID и имени листа
-    SPREADSHEET_ID = "12IJZgUKeCjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc"
+    SPREADSHEET_ID = "12lJZgUKecjmGH4BJSIbfDhpDdwMSkpD-IeXzunAu5Tc"
     SHEET_NAME = "Forex"
     sheet = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
 except Exception as e:
