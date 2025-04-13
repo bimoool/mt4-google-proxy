@@ -1,1 +1,1 @@
-web: python mt4_proxy_server.py
+web: gunicorn mt4_proxy_server:app
