@@ -35,7 +35,11 @@ except Exception as e:
 
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify({"status": "running"}), 200
+    return jsonify({
+        "status": "running",
+        "sheet_initialized": sheet is not None,
+        "init_error": init_error
+    }), 200
 
 @app.route("/send", methods=["POST"])
 def receive_data():
