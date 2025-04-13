@@ -6,7 +6,15 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 
-@app.route('/send', methods=['POST'])
+@app.route("/")
+def index():
+    return "MT4 Proxy Server is running", 200
+
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "pong", 200
+
+@app.route("/send", methods=["POST"])
 def receive_data():
     try:
         data = request.get_json()
@@ -15,9 +23,10 @@ def receive_data():
 
         creds_json = os.getenv("GSPREAD_CREDENTIALS")
         if not creds_json:
-            raise Exception("GSPREAD_CREDENTIALS env var not set")
+            return jsonify({"error": "Missing GSPREAD_CREDENTIALS env var"}), 500
 
         creds_dict = json.loads(creds_json)
+
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(credentials)
@@ -33,12 +42,13 @@ def receive_data():
             str(data.get("drawdown")),
             str(data.get("name")),
         ]
+
         sheet.append_row(row)
         return jsonify({"status": "success"}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/", methods=["GET"])
-def index():
-    return "MT4 Proxy Server is running", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
