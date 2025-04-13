@@ -6,6 +6,8 @@
 app = 'mt4-google-proxy-amacea'
 primary_region = 'otp'
 
+[build]
+  dockerfile = "Dockerfile"
 
 [http_service]
   internal_port = 8080
